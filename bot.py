@@ -4,8 +4,8 @@ import urllib.request
 import urllib.parse
 
 # យកតម្លៃពី GitHub Secrets ដោយសុវត្ថិភាព
-TOKEN = os.environ.get("TELEGRAM_TOKEN")
-CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+TOKEN = os.environ.get("8696475135:AAHuaGH1ijDkoauD2zeEhMW419m922KUsmo")
+CHAT_ID = os.environ.get("1777303968")
 STATE_FILE = "trade_state.json"
 
 def send_telegram_message(text):
