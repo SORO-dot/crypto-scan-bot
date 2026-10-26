@@ -3,11 +3,15 @@ import json
 import urllib.request
 import urllib.parse
 
-TOKEN = "8510752362:AAFIx2gB3stJrbVOiUNvWunrn1LxKWW7mnQ"
-CHAT_ID = "YOUR_CHAT_ID"  # 1777303968
+# យកតម្លៃពី GitHub Secrets ដោយសុវត្ថិភាព
+TOKEN = os.environ.get("TELEGRAM_TOKEN")
+CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 STATE_FILE = "trade_state.json"
 
 def send_telegram_message(text):
+    if not TOKEN or not CHAT_ID:
+        print("Error: Token or Chat ID not found!")
+        return
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     data = urllib.parse.urlencode({'chat_id': CHAT_ID, 'text': text, 'parse_mode': 'Markdown'}).encode('utf-8')
     req = urllib.request.Request(url, data=data)
@@ -30,8 +34,11 @@ def get_price(symbol):
 
 def load_state():
     if os.path.exists(STATE_FILE):
-        with open(STATE_FILE, "r") as f:
-            return json.load(f)
+        try:
+            with open(STATE_FILE, "r") as f:
+                return json.load(f)
+        except:
+            return {}
     return {}
 
 def save_state(state):
@@ -41,7 +48,6 @@ def save_state(state):
 def main():
     state = load_state()
     
-    # យកតម្លៃ BTC និង GOLD (PAXGUSDT តំណាងឱ្យ Gold)
     btc_price = get_price("BTCUSDT")
     gold_price = get_price("PAXGUSDT")
     
@@ -54,11 +60,10 @@ def main():
         if current_price is None:
             continue
             
-        # បើគ្មាន Trade កំពុងរត់ គឺបង្កើត Signal ថ្មី (SMC/Structure Setup ត្រួសៗ)
         if asset not in state:
-            tp = current_price * 1.008  # +0.8%
-            sl = current_price * 0.996  # -0.4%
-            be_target = current_price * 1.004 # ពាក់កណ្តាលทางសម្រាប់រំកិល BE
+            tp = current_price * 1.008
+            sl = current_price * 0.996
+            be_target = current_price * 1.004
             
             state[asset] = {
                 "entry": current_price,
@@ -79,7 +84,6 @@ def main():
             send_telegram_message(msg)
             
         else:
-            # បើមាន Trade កំពុងរត់ គឺឆែកមើលតម្លៃ TP / SL / BE
             trade = state[asset]
             entry = trade["entry"]
             tp = trade["tp"]
@@ -87,7 +91,6 @@ def main():
             be_target = trade["be_target"]
             
             if current_price <= sl:
-                # ชน SL
                 msg = f"""❌ **STOP LOSS HIT** ❌
 ━━━━━━━━━━━━━━━━━━
 📊 **Asset:** {asset}
@@ -95,10 +98,9 @@ def main():
 🛑 **Hit SL:** ${current_price:,.2f} (-0.4%)
 ━━━━━━━━━━━━━━━━━━"""
                 send_telegram_message(msg)
-                del state[asset] # លុប Trade ออก ទុកឱកាសស្កែនសារថ្មី
+                del state[asset]
                 
             elif current_price >= tp:
-                # ชน TP
                 msg = f"""🎯 **TAKE PROFIT HIT!** 🎯
 ━━━━━━━━━━━━━━━━━━
 📊 **Asset:** {asset}
@@ -110,14 +112,13 @@ def main():
                 del state[asset]
                 
             elif not trade["be_moved"] and current_price >= be_target:
-                # ដល់កម្រិតត្រូវរំកិល Break-Even (BE)
                 trade["be_moved"] = True
                 msg = f"""🛡️ **MOVE TO BREAK-EVEN (BE)** 🛡️
 ━━━━━━━━━━━━━━━━━━
 📊 **Asset:** {asset}
 💰 **Entry:** ${entry:,.2f}
 📍 **Current Price:** ${current_price:,.2f}
-👉 *តម្លៃបានរត់មកពាក់កណ្តាលทางហើយ សូមរំកិល Stop Loss មកEntry (BE) ាការការពារដើមវិញ!*
+👉 *តម្លៃបានរត់មកពាក់កណ្តាលทางហើយ សូមរំកិល Stop Loss មក Entry (BE)!*
 ━━━━━━━━━━━━━━━━━━"""
                 send_telegram_message(msg)
 
@@ -125,3 +126,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+        
